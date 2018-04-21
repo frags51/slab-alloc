@@ -1,12 +1,15 @@
 #include "libmymem.hpp"
 #include <iostream>
 #include <sys/mman.h>
+#include <mutex>
 #define DEB // For debugging purpose.
 /**
  * An array of all buckets.
  * Each stores object of size 2^(index+2)
  */
-bucket_t hashTable[] = { /* 12 Elements */
+
+// static to prevent external linkage. :: Private to this file only.
+static bucket_t hashTable[] = { /* 12 Elements */
 	bucket_t{4, 5363, nullptr},
 	bucket_t{8, 4022, nullptr},
 	bucket_t{16, 2681,nullptr},
@@ -21,7 +24,8 @@ bucket_t hashTable[] = { /* 12 Elements */
 	bucket_t{1<<13, 7, nullptr},
 };
 
-int bestFit(unsigned size){
+// static to prevent external linkage. :: Private to this file only.
+static int bestFit(unsigned size){
 	if(size<=4) return 0;
 	else if(size <=8) return 1;
 	else if(size <=16) return 2;
@@ -123,6 +127,7 @@ void myfree(void *ptr){
 	slab_t ** ptr2slbPtr = ((slab_t **)ptr)-1;
 	slab_t **p2 = (slab_t **)(slbPtr+1); // pointer to first object.
 	unsigned offset = ((bool*)ptr2slbPtr - (bool*)p2)/(((slbPtr->thisBucket)->objSize)+sizeof(bool *));
+	// all ptrs have same size.
 	if(slbPtr->bitmap[offset]!=1){
 		#ifdef DEB
 			std::cerr<<">>>>>>> Multiple free(s). ERROR."<<std::endl;
@@ -164,13 +169,23 @@ void myfree(void *ptr){
 } // myfree
 
 int main(){
-	auto a = mymalloc(4);
-	auto b = mymalloc(3);
-	auto c = mymalloc(3);
+	auto a = mymalloc(8000);
+	auto b = mymalloc(8000);
+	auto c = mymalloc(8000);
+	auto d = mymalloc(8000);
+	auto e = mymalloc(8000);
+	auto f = mymalloc(8000);
+	auto g = mymalloc(8000);
+	auto h = mymalloc(8000);
+	auto i = mymalloc(8000);
 	myfree(b);
 	myfree(c);
-	myfree(c);
 	myfree(a);
-
+	myfree(d);
+	myfree(e);
+	myfree(f);
+	myfree(g);
+	myfree(h);
+	myfree(i);
 	return 0;
 }
