@@ -159,10 +159,10 @@ void myfree(void *ptr){
 		slab_t * iterator = (slbPtr->thisBucket)->firstSlab;
 		if(iterator == nullptr){ // sanity check, will never happen.
 			#ifdef DEB
-			std::cerr<<"Deletion SEGFAULT: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
+			std::cerr<<"Deletion of nullptr, SEGFAULT: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 			#endif
 			for(int i=0;i<12;i++) locks[i].unlock();
-
+			return;
 		}
 		else if(iterator == slbPtr){ // Need to delete head.
 			slab_t * nxt = slbPtr->nextSlab;
