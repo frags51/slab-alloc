@@ -39,6 +39,7 @@ int bestFit(unsigned size){
 
 void *mymalloc(unsigned size){
 	int index = bestFit(size);
+	
 	if(index<0) {
 		#ifdef DEB
 			std::cerr<<"Index < 0 bestFit"<<std::endl;
@@ -67,13 +68,54 @@ void *mymalloc(unsigned size){
 		#endif
 		*p2 = slbPtr;
 		return (void *)(p2+1);
-	}
-	else if(true){
-
-	}
+	} // No slab exists
+	else{ // goto the next non empty slab.
+		slab_t *slbPtr = hashTable[index].firstSlab;
+		while(slbPtr->nextSlab!=nullptr && (slbPtr->freeObj <= 0)) slbPtr = slbPtr->nextSlab;
+		if(slbPtr->freeObj <=0 ){ // Cause of loop break was all slabs full.
+			slab_t *newSlbPtr = (slab_t *) mmap(NULL, 1<<16, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+			slbPtr->nextSlab = newSlbPtr;
+			// Initialize slab variables.
+			newSlbPtr->thisBucket = &(hashTable[index]);
+			newSlbPtr->totObj = (slbPtr->thisBucket)->totObj;
+			newSlbPtr->freeObj = slbPtr->totObj;
+			newSlbPtr->nextSlab = nullptr;
+			newSlbPtr->bitmap.reset();
+			// Give first object.
+			// var is the first free object's location.
+			newSlbPtr->freeObj--;
+			newSlbPtr->bitmap[0]=1;
+			// Need to jump by 1 byte * sizeof(slab_t)
+			// Need to store sizeof(pointer) in this location.
+			slab_t **p2 = (slab_t **)(newSlbPtr+1);
+			#ifdef DEB
+				std::cerr<<"All slabs full: insert:: newSlbPtr: "<<newSlbPtr<<", p2: "<<p2<<", p2+1: "<<p2+1<<std::endl;
+			#endif
+			*p2 = newSlbPtr;
+			return (void *)(p2+1);
+		} // All slabs full.
+		else{ // Slab exists and is partially full.
+			// find first non empty object place.
+			unsigned i {0};
+			for(; slbPtr->bitmap[i]!=0 && i < slbPtr->totObj; i++); // Loop till you get to a 0.
+			bool *p3 = (bool *)(slbPtr+1); // bool is 1 byte.
+			p3+=(i * (((slbPtr->thisBucket)->objSize)+sizeof(bool *))); // Get to the current pos. 
+			//this should be sizeof(struct object_t)
+			slbPtr->freeObj--;
+			slbPtr->bitmap[i]=1;
+			slab_t **p2 = (slab_t **) p3;
+			#ifdef DEB
+				std::cerr<<"Partially full slab: insert:: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", p2+1: "<<p2+1<<std::endl;
+			#endif
+			*p2 = slbPtr;
+			return (void *)(p2+1); 
+		} // else of slab exists, is partially full.
+	} // else of no slab exists yet
 } // myalloc
 
 int main(){
 	mymalloc(4);
+	mymalloc(3);
+	mymalloc(3);
 	return 0;
 }

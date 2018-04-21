@@ -26,7 +26,6 @@ struct slab_t{
 
 struct object_t{
 	slab_t * slab;
-	 	
 };
 
 
