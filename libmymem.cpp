@@ -24,6 +24,8 @@ static bucket_t hashTable[] = { /* 12 Elements */
 	bucket_t{1<<13, 7, nullptr},
 };
 
+static std::mutex locks[12];
+
 // static to prevent external linkage. :: Private to this file only.
 static int bestFit(unsigned size){
 	if(size<=4) return 0;
@@ -51,6 +53,9 @@ void *mymalloc(unsigned size){
 		return nullptr;
 	}
 
+	// lock corresponding mutex!
+	locks[index].lock();
+
 	if(hashTable[index].firstSlab==nullptr){ // First slab of the size.
 		slab_t *slbPtr = (slab_t *) mmap(NULL, 1<<16, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		hashTable[index].firstSlab = slbPtr;
@@ -71,6 +76,7 @@ void *mymalloc(unsigned size){
 			std::cerr<<"slbPtr: "<<slbPtr<<", p2: "<<p2<<", p2+1: "<<p2+1<<std::endl;
 		#endif
 		*p2 = slbPtr;
+		locks[index].unlock();
 		return (void *)(p2+1);
 	} // No slab exists
 	else{ // goto the next non empty slab.
@@ -96,6 +102,7 @@ void *mymalloc(unsigned size){
 				std::cerr<<"All slabs full: insert:: newSlbPtr: "<<newSlbPtr<<", p2: "<<p2<<", p2+1: "<<p2+1<<std::endl;
 			#endif
 			*p2 = newSlbPtr;
+			locks[index].unlock();
 			return (void *)(p2+1);
 		} // All slabs full.
 		else{ // Slab exists and is partially full.
@@ -112,6 +119,7 @@ void *mymalloc(unsigned size){
 				std::cerr<<"Partially full slab: insert:: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", p2+1: "<<p2+1<<std::endl;
 			#endif
 			*p2 = slbPtr;
+			locks[index].unlock();
 			return (void *)(p2+1); 
 		} // else of slab exists, is partially full.
 	} // else of no slab exists yet
@@ -132,6 +140,7 @@ void myfree(void *ptr){
 		#ifdef DEB
 			std::cerr<<">>>>>>> Multiple free(s). ERROR."<<std::endl;
 		#endif
+		
 		return;
 	}
 	if(slbPtr->bitmap.count() > 1){ // many objects left, dont delete this
@@ -140,6 +149,8 @@ void myfree(void *ptr){
 		#ifdef DEB
 			std::cerr<<"Deletion Partially full slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 		#endif
+		
+		return;
 	}
 	else{ // only 1 object in this slab, need to unmap.
 		slab_t * iterator = (slbPtr->thisBucket)->firstSlab;
@@ -155,6 +166,8 @@ void myfree(void *ptr){
 			#ifdef DEB
 				std::cerr<<"Deletion (firstSlab) empty slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 			#endif
+			
+			return;
 		}
 		else{ // Slab to be removed is somewhere in b/w
 			slab_t * prev = iterator;
@@ -164,6 +177,8 @@ void myfree(void *ptr){
 			#ifdef DEB
 				std::cerr<<"Deletion empty slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 			#endif
+			
+			return;
 		}
 	} // else only 1 object in slab.
 } // myfree
