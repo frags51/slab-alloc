@@ -97,7 +97,7 @@ void *mymalloc(unsigned size){
 		else{ // Slab exists and is partially full.
 			// find first non empty object place.
 			unsigned i {0};
-			for(; slbPtr->bitmap[i]!=0 && i < slbPtr->totObj; i++); // Loop till you get to a 0.
+			for(; slbPtr->bitmap[i]!=0 && (i < slbPtr->totObj); i++); // Loop till you get to a 0.
 			bool *p3 = (bool *)(slbPtr+1); // bool is 1 byte.
 			p3+=(i * (((slbPtr->thisBucket)->objSize)+sizeof(bool *))); // Get to the current pos. 
 			//this should be sizeof(struct object_t)
@@ -113,9 +113,64 @@ void *mymalloc(unsigned size){
 	} // else of no slab exists yet
 } // myalloc
 
+void myfree(void *ptr){
+	if(ptr==nullptr){
+		#ifdef DEB
+			std::cerr<<"Freeing nullptr error"<<std::endl;
+		#endif
+	}
+	slab_t * slbPtr = *( ((slab_t **)ptr)-1); // The slab that contains this object.
+	slab_t ** ptr2slbPtr = ((slab_t **)ptr)-1;
+	slab_t **p2 = (slab_t **)(slbPtr+1); // pointer to first object.
+	unsigned offset = ((bool*)ptr2slbPtr - (bool*)p2)/(((slbPtr->thisBucket)->objSize)+sizeof(bool *));
+	if(slbPtr->bitmap[offset]!=1){
+		#ifdef DEB
+			std::cerr<<">>>>>>> Multiple free(s). ERROR."<<std::endl;
+		#endif
+		return;
+	}
+	if(slbPtr->bitmap.count() > 1){ // many objects left, dont delete this
+		slbPtr->bitmap[offset]=0;
+		slbPtr->freeObj++;
+		#ifdef DEB
+			std::cerr<<"Deletion Partially full slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
+		#endif
+	}
+	else{ // only 1 object in this slab, need to unmap.
+		slab_t * iterator = (slbPtr->thisBucket)->firstSlab;
+		if(iterator == nullptr){ // sanity check, will never happen.
+			#ifdef DEB
+			std::cerr<<"Deletion SEGFAULT: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
+			#endif
+		}
+		else if(iterator == slbPtr){ // Need to delete head.
+			slab_t * nxt = slbPtr->nextSlab;
+			(slbPtr->thisBucket)->firstSlab = nxt;
+			munmap(slbPtr, 1<<16);
+			#ifdef DEB
+				std::cerr<<"Deletion (firstSlab) empty slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
+			#endif
+		}
+		else{ // Slab to be removed is somewhere in b/w
+			slab_t * prev = iterator;
+			for(; prev!=nullptr && slbPtr != prev->nextSlab; prev=prev->nextSlab);
+			prev->nextSlab = slbPtr->nextSlab;
+			munmap(slbPtr, 1<<16);
+			#ifdef DEB
+				std::cerr<<"Deletion empty slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
+			#endif
+		}
+	} // else only 1 object in slab.
+} // myfree
+
 int main(){
-	mymalloc(4);
-	mymalloc(3);
-	mymalloc(3);
+	auto a = mymalloc(4);
+	auto b = mymalloc(3);
+	auto c = mymalloc(3);
+	myfree(b);
+	myfree(c);
+	myfree(c);
+	myfree(a);
+
 	return 0;
 }
