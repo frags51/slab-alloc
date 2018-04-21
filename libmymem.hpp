@@ -35,24 +35,8 @@ struct bucket_t{
 	unsigned totObj;
 	slab_t * firstSlab;
 };
-/**
- * An array of all buckets.
- * Each stores object of size 2^(index+1)
- */
-bucket_t hashTable[] = { /* 12 Elements */
-	bucket_t{4, 5363, nullptr},
-	bucket_t{8, 4022, nullptr},
-	bucket_t{16, 2681,nullptr},
-	bucket_t{32, 1609,nullptr},
-	bucket_t{64, 893, nullptr},
-	bucket_t{128, 473, nullptr},
-	bucket_t{256, 243, nullptr},
-	bucket_t{512, 123, nullptr},
-	bucket_t{1024, 62, nullptr},
-	bucket_t{1<<11, 31, nullptr},
-	bucket_t{1<<12, 15, nullptr},
-	bucket_t{1<<13, 7, nullptr},
-};
 
+
+int bestFit(unsigned size);
 
 #endif /* _LIB_MYMEM_HPP */
