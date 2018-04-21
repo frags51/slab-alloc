@@ -2,7 +2,7 @@
 #include <iostream>
 #include <sys/mman.h>
 #include <mutex>
-#define DEB // For debugging purpose.
+//#define DEB // For debugging purpose.
 /**
  * An array of all buckets.
  * Each stores object of size 2^(index+2)
@@ -189,25 +189,3 @@ void myfree(void *ptr){
 		}
 	} // else only 1 object in slab.
 } // myfree
-
-int main(){
-	auto a = mymalloc(8000);
-	auto b = mymalloc(8000);
-	auto c = mymalloc(8000);
-	auto d = mymalloc(8000);
-	auto e = mymalloc(8000);
-	auto f = mymalloc(8000);
-	auto g = mymalloc(8000);
-	auto h = mymalloc(8000);
-	auto i = mymalloc(8000);
-	myfree(b);
-	myfree(c);
-	myfree(a);
-	myfree(d);
-	myfree(e);
-	myfree(f);
-	myfree(g);
-	myfree(h);
-	myfree(i);
-	return 0;
-}

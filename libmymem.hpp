@@ -36,6 +36,5 @@ struct bucket_t{
 };
 
 
-static int bestFit(unsigned size);
 
 #endif /* _LIB_MYMEM_HPP */
