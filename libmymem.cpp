@@ -126,6 +126,7 @@ void *mymalloc(unsigned size){
 } // myalloc
 
 void myfree(void *ptr){
+	for(int i=0;i<12;i++) locks[i].lock();
 	if(ptr==nullptr){
 		#ifdef DEB
 			std::cerr<<"Freeing nullptr error"<<std::endl;
@@ -140,7 +141,8 @@ void myfree(void *ptr){
 		#ifdef DEB
 			std::cerr<<">>>>>>> Multiple free(s). ERROR."<<std::endl;
 		#endif
-		
+		for(int i=0;i<12;i++) locks[i].unlock();
+
 		return;
 	}
 	if(slbPtr->bitmap.count() > 1){ // many objects left, dont delete this
@@ -149,7 +151,8 @@ void myfree(void *ptr){
 		#ifdef DEB
 			std::cerr<<"Deletion Partially full slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 		#endif
-		
+		for(int i=0;i<12;i++) locks[i].unlock();
+
 		return;
 	}
 	else{ // only 1 object in this slab, need to unmap.
@@ -158,6 +161,8 @@ void myfree(void *ptr){
 			#ifdef DEB
 			std::cerr<<"Deletion SEGFAULT: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 			#endif
+			for(int i=0;i<12;i++) locks[i].unlock();
+
 		}
 		else if(iterator == slbPtr){ // Need to delete head.
 			slab_t * nxt = slbPtr->nextSlab;
@@ -166,7 +171,8 @@ void myfree(void *ptr){
 			#ifdef DEB
 				std::cerr<<"Deletion (firstSlab) empty slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 			#endif
-			
+			for(int i=0;i<12;i++) locks[i].unlock();
+
 			return;
 		}
 		else{ // Slab to be removed is somewhere in b/w
@@ -177,7 +183,8 @@ void myfree(void *ptr){
 			#ifdef DEB
 				std::cerr<<"Deletion empty slab: SlbPtr: "<<slbPtr<<", p2: "<<p2<<", offset: "<<offset<<std::endl;
 			#endif
-			
+			for(int i=0;i<12;i++) locks[i].unlock();
+
 			return;
 		}
 	} // else only 1 object in slab.
